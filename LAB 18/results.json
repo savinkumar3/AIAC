@@ -1,0 +1,14 @@
+[
+    {
+        "city": "Hyderabad",
+        "temp": 22.23,
+        "humidity": 94,
+        "weather": "Moderate rain"
+    },
+    {
+        "city": "Adilabad",
+        "temp": 27.81,
+        "humidity": 75,
+        "weather": "Overcast clouds"
+    }
+]
