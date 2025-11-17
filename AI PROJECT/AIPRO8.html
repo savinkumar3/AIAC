@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SRU — Faculty Approval Portal (Demo)</title>
+<style>
+  :root{
+    --sr:#c1121f; --muted:#6b7280; --card:#fff; --bg:#f4f6fb; --success:#16a34a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter, "Segoe UI",Roboto,Arial,sans-serif;background:linear-gradient(180deg,#eef2ff,#f7fafc);color:#0f172a}
+  header{background:linear-gradient(90deg,var(--sr),#ef4444);color:white;padding:18px 20px;display:flex;align-items:center;gap:12px}
+  .brand{font-weight:800;font-size:18px}
+  .container{max-width:1150px;margin:22px auto;padding:16px}
+  .grid{display:grid;grid-template-columns:260px 1fr;gap:16px}
+  aside.card, main.card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 8px 20px rgba(2,6,23,0.06)}
+  .nav-item{padding:10px;border-radius:8px;cursor:pointer;color:var(--muted);margin-bottom:6px}
+  .nav-item.active{background:#fff0f0;color:var(--sr);font-weight:700}
+  h2{color:var(--sr);margin:0 0 8px}
+  label{display:block;margin-top:8px;font-weight:600;font-size:13px}
+  input,select,textarea,button{font-family:inherit}
+  input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;margin-top:6px}
+  textarea{min-height:90px}
+  .btn{background:var(--sr);color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+  .btn.ghost{background:transparent;border:1px solid #e6e9ef;color:var(--sr)}
+  .small{font-size:13px;color:var(--muted)}
+  .app-list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+  .app-card{display:flex;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;background:#fff;box-shadow:0 6px 18px rgba(2,6,23,0.04)}
+  .status-pill{padding:6px 10px;border-radius:999px;font-weight:700}
+  .status-sub{background:#fff7ed;color:#b45309;border:1px solid #fce5c9}
+  .status-approved{background:#ecfdf5;color:var(--success);border:1px solid #d1fae5}
+  .status-rej{background:#fff1f2;color:#c00;border:1px solid #fee2e2}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .search-row{display:flex;gap:8px;align-items:center}
+  .search-row input{flex:1;padding:8px}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+  .toast{background:#111827;color:white;padding:10px 12px;border-radius:8px;box-shadow:0 6px 20px rgba(2,6,23,0.3)}
+  .modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,0.5);display:none;align-items:center;justify-content:center;padding:20px;z-index:999}
+  .modal{background:white;border-radius:12px;padding:18px;max-width:760px;width:100%;box-shadow:0 12px 40px rgba(2,6,23,0.3)}
+  .modal h3{margin:0 0 8px;color:var(--sr)}
+  .progress{display:flex;gap:6px;margin-top:8px}
+  .step{flex:1;height:8px;border-radius:6px;background:#eef2ff;position:relative;overflow:hidden}
+  .step.done{background:linear-gradient(90deg,#bbf7d0,#86efac)}
+  .meta{font-size:13px;color:var(--muted)}
+  .right{margin-left:auto}
+  .file-link{color:var(--sr);text-decoration:none}
+  footer{max-width:1150px;margin:10px auto;text-align:center;color:var(--muted);font-size:13px}
+  .feedback-list{margin-top:8px;border-top:1px dashed #eee;padding-top:8px}
+  .feedback-item{background:#fbfbfb;padding:8px;border-radius:8px;margin-top:6px;border:1px solid #f1f1f1}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}.app-card{flex-direction:column;align-items:flex-start}.right{margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">SR UNIVERSITY — Faculty Approval Portal</div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <div id="userBadge" class="small" style="background:#fff;padding:6px 10px;border-radius:8px">Guest</div>
+    <button class="btn" id="btnLogin">Login</button>
+    <button class="btn ghost" id="btnLogout" style="display:none">Logout</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="grid">
+    <aside class="card">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="width:46px;height:46px;border-radius:10px;background:linear-gradient(180deg,#fff,#fee2e2);display:flex;align-items:center;justify-content:center;color:var(--sr);font-weight:800">SR</div>
+        <div>
+          <div style="font-weight:800">SR University</div>
+          <div class="small">Approval & Contract Demo</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px" id="navList">
+        <div class="nav-item active" data-view="dashboard">Dashboard</div>
+        <div class="nav-item" data-view="apply">Submit Application</div>
+        <div class="nav-item" data-view="applications">All Applications</div>
+        <div class="nav-item" data-view="profiles">Approved Profiles</div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small">Filters</div>
+        <label class="small">Department</label>
+        <select id="filterDept"><option value="">All</option><option>CSE</option><option>ECE</option><option>ME</option><option>Civil</option><option>EE</option></select>
+        <label class="small" style="margin-top:8px">Status</label>
+        <select id="filterStatus"><option value="">All</option><option>Submitted</option><option>Approved by HOD</option><option>Approved by Principal</option><option>Approved ✅</option><option>Rejected</option></select>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" id="applyFilters">Apply</button>
+          <button class="btn ghost" id="clearFilters">Clear</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small">Demo Controls</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn ghost" id="exportCSV">Export Approved CSV</button>
+          <button class="btn ghost" id="resetData">Reset Demo</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="card" id="mainView">
+      <!-- Dashboard view -->
+      <section id="view-dashboard">
+        <h2>Dashboard</h2>
+        <div class="meta">Overview & quick actions</div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:12px">
+          <div style="background:linear-gradient(180deg,#fff,#fff8f6);padding:14px;border-radius:10px">
+            <div style="font-weight:700;color:var(--sr)">Pending</div>
+            <div id="dashPending" style="font-size:22px;margin-top:8px">0</div>
+            <div class="small muted">Needs review</div>
+          </div>
+          <div style="background:linear-gradient(180deg,#fff,#f6fffb);padding:14px;border-radius:10px">
+            <div style="font-weight:700;color:var(--success)">Approved</div>
+            <div id="dashApproved" style="font-size:22px;margin-top:8px">0</div>
+            <div class="small muted">Active contracts</div>
+          </div>
+          <div style="background:linear-gradient(180deg,#fff,#fff7f9);padding:14px;border-radius:10px">
+            <div style="font-weight:700;color:#c00">Rejected</div>
+            <div id="dashRejected" style="font-size:22px;margin-top:8px">0</div>
+            <div class="small muted">Rejected applications</div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
+          <div class="search-row" style="flex:1">
+            <input id="quickSearch" placeholder="Search by name, email, dept..." oninput="renderDashboardList()" />
+            <select id="quickSort" onchange="renderDashboardList()"><option value="">Sort: Newest</option><option value="exp">Experience High→Low</option><option value="name">Name A→Z</option></select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="showView('apply')">New Application</button>
+            <button class="btn ghost" onclick="showView('applications')">Submitted Applications</button>
+          </div>
+        </div>
+
+        <div class="app-list" id="dashboardList"></div>
+      </section>
+
+      <!-- Apply -->
+      <section id="view-apply" style="display:none">
+        <h2>Submit Faculty Application</h2>
+        <div class="meta">All required fields validated before submit</div>
+
+        <form id="appForm" style="margin-top:12px">
+          <label>Full name *</label><input id="name" required placeholder="e.g. Dr. Savin Kumar" />
+          <label>Email *</label><input id="email" type="email" required />
+          <label>Phone *</label><input id="phone" required placeholder="10-digit mobile" />
+          <label>Department *</label>
+          <select id="dept" required><option value="">Select</option><option>CSE</option><option>ECE</option><option>ME</option><option>Civil</option><option>EE</option></select>
+          <label>Qualification *</label><input id="qualification" required />
+          <label>Experience (years) *</label><input id="experience" type="number" min="0" max="60" required />
+          <label>Aadhaar *</label><input id="aadhaar" required placeholder="12 digits" />
+          <label>PAN *</label><input id="pan" required placeholder="ABCDE1234F" />
+          <label>Upload Resume *</label><input id="resume" type="file" accept=".pdf,.jpg,.jpeg,.png" required />
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn" type="submit">Submit Application</button>
+            <button class="btn ghost" type="button" id="resetForm">Reset</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Applications -->
+      <section id="view-applications" style="display:none">
+        <h2>All Applications</h2>
+        <div id="applicationsList"></div>
+      </section>
+
+      <!-- Profiles -->
+      <section id="view-profiles" style="display:none">
+        <h2>Approved Profiles</h2>
+        <div id="profilesList"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Login Modal -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <h3>Login (Demo)</h3>
+    <div class="small">Use the demo credentials listed below</div>
+    <div style="display:grid;gap:8px;margin-top:12px">
+      <label>Username</label><input id="loginUser" placeholder="e.g. hod or faculty" />
+      <label>Password</label><input id="loginPass" type="password" placeholder="password" />
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="doLogin">Login</button>
+        <button class="btn ghost" id="doCancel">Cancel</button>
+      </div>
+      <div class="small" style="margin-top:6px">
+        <b>Demo credentials:</b>
+        <ul style="margin:6px 0 0 18px">
+          <li>faculty / faculty123</li>
+          <li>hod / hod123</li>
+          <li>principal / principal123</li>
+          <li>management / management123</li>
+          <li>student / student123</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Question Modal -->
+<div class="modal-overlay" id="questionModal">
+  <div class="modal" id="questionBox"></div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal-overlay" id="detailsModal">
+  <div class="modal" id="detailsBox"></div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal-overlay" id="feedbackModal">
+  <div class="modal" id="feedbackBox"></div>
+</div>
+
+<footer>SR University Demo — Local Demo (localStorage). &nbsp; No backend. &nbsp; Use responsibly.</footer>
+
+<script>
+/* -----------------------------
+   Data & Helpers
+   ----------------------------- */
+const LS_KEY = 'sru_demo_v2';
+const TOKEN_KEY = 'sru_demo_token';
+const demoUsers = {
+  faculty: { password: 'faculty123', role: 'Faculty' },
+  hod: { password: 'hod123', role: 'HOD' },
+  principal: { password: 'principal123', role: 'Principal' },
+  management: { password: 'management123', role: 'Management' },
+  student: { password: 'student123', role: 'Student' }
+};
+
+function toast(msg, ms=3500){
+  const t = document.createElement('div'); t.className='toast'; t.textContent = msg;
+  document.getElementById('toastWrap').appendChild(t);
+  setTimeout(()=>{ t.style.opacity=0; setTimeout(()=>t.remove(),350) }, ms);
+}
+
+function saveState(state){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function loadState(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(LS_KEY));
+    // ensure we always return an object with both arrays present
+    if(!raw) return { applications: [], feedbackRecords: [] };
+    if(!Array.isArray(raw.applications)) raw.applications = [];
+    if(!Array.isArray(raw.feedbackRecords)) raw.feedbackRecords = [];
+    return raw;
+  } catch(e){
+    return { applications: [], feedbackRecords: [] };
+  }
+}
+let state = loadState();
+
+/* init sample data if empty (but keep any existing feedbackRecords) */
+function idGen(){ return 'SRU-'+Math.random().toString(36).slice(2,9).toUpperCase(); }
+
+if(!state.applications || state.applications.length===0){
+  state.applications = [
+    { id:idGen(), name:"Dr. Asha Kumar", email:"asha@univ.edu", phone:"9876543210", dept:"CSE", qualification:"PhD", experience:8, aadhaar:"123456789012", pan:"ABCDE1234F", resume:"asha_cv.pdf", status:"Submitted", round:0, feedback:[], createdAt:Date.now()-1000*60*60*24*10 },
+    { id:idGen(), name:"Mr. Ravi Sharma", email:"ravi@univ.edu", phone:"9123456780", dept:"ECE", qualification:"M.Tech", experience:4, aadhaar:"111122223333", pan:"PQRST6789A", resume:"ravi_cv.pdf", status:"Approved by HOD", round:1, feedback:[{by:'HOD',answers:['Yes','Yes']}], createdAt:Date.now()-1000*60*60*24*5 },
+    { id:idGen(), name:"Prof. Meera Iyer", email:"meera@univ.edu", phone:"9988776655", dept:"ME", qualification:"PhD", experience:12, aadhaar:"222233334444", pan:"LMNOP1234Z", resume:"meera_cv.pdf", status:"Approved ✅", round:3, feedback:[{by:'HOD',answers:['Yes','Yes']},{by:'Principal',answers:['Yes','Recommend']},{by:'Management',answers:['Yes','Assign ₹120000']}], createdAt:Date.now()-1000*60*60*24*200 }
+  ];
+  // ensure feedbackRecords exists
+  if(!state.feedbackRecords) state.feedbackRecords = [];
+  saveState(state);
+}
+
+/* token / auth */
+function setToken(t){ localStorage.setItem(TOKEN_KEY, JSON.stringify(t)); updateAuthUI(); }
+function clearToken(){ localStorage.removeItem(TOKEN_KEY); updateAuthUI(); }
+function getToken(){ try{ return JSON.parse(localStorage.getItem(TOKEN_KEY)); }catch(e){ return null } }
+
+/* small validators */
+function isEmail(e){ return /^\S+@\S+\.\S+$/.test(e) }
+function isPhone(p){ return /^[6-9]\d{9}$/.test(p) }
+function isAadhaar(a){ return /^\d{12}$/.test(a) }
+function isPan(p){ return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(p) }
+
+/* escape HTML for safe display */
+function escapeHtml(str){
+  if(!str && str!==0) return '';
+  return String(str).replace(/[&<>\"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[m]; });
+}
+
+/* mask student id for non-student viewers */
+function maskStudentId(id){
+  if(!id) return 'Student';
+  const s = String(id);
+  if(s.length <= 3) return '***';
+  const first = s[0];
+  const last = s.slice(-2);
+  return `${first}***${last}`;
+}
+
+/* -----------------------------
+   UI bindings & navigation
+   ----------------------------- */
+const views = { dashboard:'view-dashboard', apply:'view-apply', applications:'view-applications', profiles:'view-profiles' }
+document.getElementById('navList').addEventListener('click', e=>{
+  const node = e.target.closest('.nav-item'); if(!node) return;
+  document.querySelectorAll('#navList .nav-item').forEach(n=>n.classList.remove('active'));
+  node.classList.add('active');
+  showView(node.dataset.view);
+});
+
+function showView(view){
+  Object.values(views).forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById(views[view]).style.display = 'block';
+  if(view==='applications') renderApplications();
+  if(view==='profiles') renderProfiles();
+}
+showView('dashboard');
+
+/* Login modal controls */
+document.getElementById('btnLogin').addEventListener('click', ()=>{ document.getElementById('loginModal').style.display='flex'; document.getElementById('loginUser').focus();})
+document.getElementById('doCancel').addEventListener('click', ()=>{ document.getElementById('loginModal').style.display='none'; })
+document.getElementById('doLogin').addEventListener('click', handleLogin);
+document.getElementById('btnLogout').addEventListener('click', ()=>{ clearToken(); toast('Logged out'); })
+
+function handleLogin(){
+  const u = document.getElementById('loginUser').value.trim().toLowerCase();
+  const p = document.getElementById('loginPass').value.trim();
+  if(!u || !p){ alert('Enter username and password'); return; }
+  if(demoUsers[u] && demoUsers[u].password === p){
+    setToken({username:u,role:demoUsers[u].role,iat:Date.now()});
+    document.getElementById('loginModal').style.display='none';
+    toast(`Logged in as ${demoUsers[u].role}`);
+  } else {
+    alert('Invalid credentials (check demo list)');
+  }
+}
+
+function updateAuthUI(){
+  const tok = getToken();
+  const badge = document.getElementById('userBadge');
+  if(!tok){ badge.textContent='Guest'; document.getElementById('btnLogin').style.display='inline-block'; document.getElementById('btnLogout').style.display='none' }
+  else { badge.textContent = `${tok.role} • ${tok.username}`; document.getElementById('btnLogin').style.display='none'; document.getElementById('btnLogout').style.display='inline-block' }
+  renderAll();
+}
+updateAuthUI();
+
+/* -----------------------------
+   Application form submit
+   ----------------------------- */
+document.getElementById('appForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const dept = document.getElementById('dept').value;
+  const qualification = document.getElementById('qualification').value.trim();
+  const experience = Number(document.getElementById('experience').value);
+  const aadhaar = document.getElementById('aadhaar').value.trim();
+  const pan = document.getElementById('pan').value.trim();
+  const fileInput = document.getElementById('resume');
+
+  if(name.length<3){ alert('Enter full name'); return; }
+  if(!isEmail(email)){ alert('Invalid email'); return; }
+  if(!isPhone(phone)){ alert('Invalid phone'); return; }
+  if(!dept){ alert('Select department'); return; }
+  if(!Number.isFinite(experience) || isNaN(experience)){ alert('Enter experience'); return; }
+  if(!isAadhaar(aadhaar)){ alert('Aadhaar must be 12 digits'); return; }
+  if(!isPan(pan)){ alert('PAN invalid (ABCDE1234F)'); return; }
+  if(!fileInput.files || fileInput.files.length===0){ alert('Upload resume'); return; }
+  const f = fileInput.files[0];
+  const allowed = ['application/pdf','image/jpeg','image/png','image/jpg'];
+  if(!allowed.includes(f.type)){ alert('File type not allowed'); return; }
+  if(f.size > 6*1024*1024){ alert('Max file size 6MB'); return; }
+
+  // prevent duplicate filenames (simple)
+  if(state.applications.some(a=>a.resume === f.name)){
+    if(!confirm('A file with same name exists. Continue?')) return;
+  }
+
+  const start = new Date(); const end = new Date(); end.setFullYear(end.getFullYear()+1);
+  const contract = `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
+
+  const app = {
+    id:idGen(), name, email, phone, dept, qualification, experience, aadhaar, pan,
+    resume: f.name, status:'Submitted', round:0, feedback:[], salary:null, contract, createdAt:Date.now()
+  };
+  state.applications.unshift(app);
+  saveState(state);
+  toast('Application submitted — awaiting HOD review');
+  document.getElementById('appForm').reset();
+  renderAll();
+});
+
+/* -----------------------------
+   Render functions
+   ----------------------------- */
+function renderAll(){
+  updateStats();
+  renderApplications();
+  renderProfiles();
+  renderDashboardList();
+}
+
+function updateStats(){
+  // stats for all (not filtered) — you can change this to be filtered if desired
+  const pend = state.applications.filter(a=> a.status==='Submitted' || (a.round<3 && a.status!=='Rejected' && !a.status.includes('Approved ✅'))).length;
+  const appr = state.applications.filter(a=> a.status.includes('Approved')).length;
+  const rej = state.applications.filter(a=> a.status==='Rejected').length;
+  document.getElementById('dashPending').textContent = pend;
+  document.getElementById('dashApproved').textContent = appr;
+  document.getElementById('dashRejected').textContent = rej;
+}
+
+/* Dashboard small list (cards) — now respects filters (dept + status + quick search/sort) */
+function renderDashboardList(){
+  const wrap = document.getElementById('dashboardList'); wrap.innerHTML='';
+  let items = [...state.applications];
+  const q = document.getElementById('quickSearch') ? document.getElementById('quickSearch').value.trim().toLowerCase() : '';
+  const sortBy = document.getElementById('quickSort') ? document.getElementById('quickSort').value : '';
+  const deptFilter = document.getElementById('filterDept') ? document.getElementById('filterDept').value : '';
+  const statusFilter = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : '';
+
+  if(deptFilter) items = items.filter(i=>i.dept === deptFilter);
+  if(statusFilter) items = items.filter(i=>i.status === statusFilter);
+  if(q) items = items.filter(i => (i.name+i.email+i.dept).toLowerCase().includes(q));
+  if(sortBy==='exp') items.sort((a,b)=>b.experience - a.experience);
+  else if(sortBy==='name') items.sort((a,b)=>a.name.localeCompare(b.name));
+  else items.sort((a,b)=>b.createdAt - a.createdAt);
+
+  items.forEach(app=>{
+    const card = document.createElement('div'); card.className='app-card';
+    card.innerHTML = `
+      <div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="width:46px;height:46px;border-radius:8px;background:#fff3f3;color:var(--sr);display:flex;align-items:center;justify-content:center;font-weight:800">
+            ${escapeHtml(app.name.split(' ').map(s=>s[0]).slice(0,2).join(''))}
+          </div>
+          <div>
+            <div style="font-weight:700">${escapeHtml(app.name)} <span class="small muted">(${escapeHtml(app.dept)})</span></div>
+            <div class="small muted">${escapeHtml(app.email)} • ${escapeHtml(app.phone)}</div>
+            <div class="small muted">Qualification: ${escapeHtml(app.qualification)} • Exp: ${escapeHtml(app.experience)} yrs</div>
+            <div class="small muted">Contract: ${escapeHtml(app.contract)} • File: <a class="file-link" href="#">${escapeHtml(app.resume)}</a></div>
+            <div style="margin-top:8px">${renderProgress(app)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="right" style="display:flex;flex-direction:column;align-items:flex-end">
+        <div class="status-pill ${statusClass(app.status)}">${escapeHtml(app.status)}</div>
+        <div class="actions" style="margin-top:8px">${renderActionButtons(app)}</div>
+        <div class="small muted" style="margin-top:8px">ID: ${escapeHtml(app.id)}</div>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+
+  if(items.length===0) wrap.innerHTML = '<div class="small muted">No applications found.</div>';
+}
+
+function renderProgress(app){
+  // 3 stages: HOD (round0), Principal (round1), Management (round2) ; final approved round3
+  const stages = ['HOD','Principal','Management'];
+  let html = '<div class="progress">';
+  for(let i=0;i<3;i++){
+    const done = app.round > i || app.status.includes('Approved ✅') || (i===2 && app.status.includes('Approved by Principal'));
+    html += `<div class="step ${done?'done':''}" title="${stages[i]}"></div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function statusClass(s){
+  if(s==='Rejected') return 'status-rej';
+  if(s.includes('Approved')) return 'status-approved';
+  return 'status-sub';
+}
+
+/* Applications list full view */
+function renderApplications(){
+  const wrap = document.getElementById('applicationsList'); wrap.innerHTML='';
+  const deptFilter = document.getElementById('filterDept').value;
+  const statusFilter = document.getElementById('filterStatus').value;
+  const q = document.getElementById('quickSearch').value.trim().toLowerCase();
+  let items = [...state.applications];
+  if(deptFilter) items = items.filter(i=>i.dept===deptFilter);
+  if(statusFilter) items = items.filter(i=>i.status===statusFilter);
+  if(q) items = items.filter(i=> (i.name + i.email + i.dept).toLowerCase().includes(q));
+  items.forEach(app=>{
+    const card = document.createElement('div'); card.className='app-card';
+    card.innerHTML = `
+      <div>
+        <div style="font-weight:700">${escapeHtml(app.name)} <span class="small muted">(${escapeHtml(app.dept)})</span></div>
+        <div class="small muted">${escapeHtml(app.email)} • ${escapeHtml(app.phone)}</div>
+        <div class="small muted">Contract: ${escapeHtml(app.contract)} • File: ${escapeHtml(app.resume)}</div>
+        <div style="margin-top:8px">${renderProgress(app)}</div>
+      </div>
+      <div class="right">
+        <div class="status-pill ${statusClass(app.status)}">${escapeHtml(app.status)}</div>
+        <div class="actions" style="margin-top:8px">
+          <button class="btn ghost" onclick="openDetails('${escapeHtml(app.id)}')">View</button>
+          ${renderActionButtons(app)}
+        </div>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+  if(items.length===0) wrap.innerHTML = '<div class="small muted">No apps match filters.</div>';
+}
+
+/* Profiles */
+function renderProfiles(){
+  const wrap = document.getElementById('profilesList'); wrap.innerHTML='';
+  const approved = state.applications.filter(a => a.status.includes('Approved'));
+  if(approved.length===0){ wrap.innerHTML = '<div class="small muted">No approved profiles yet.</div>'; return; }
+  approved.forEach(a=>{
+    const div = document.createElement('div'); div.className='card';
+    div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:700">${escapeHtml(a.name)} <span class="small muted">(${escapeHtml(a.dept)})</span></div>
+        <div class="small muted">${escapeHtml(a.qualification)} • ${escapeHtml(a.experience)} yrs</div>
+        <div class="small muted">Salary: ${escapeHtml(a.salary||'Not assigned')} • Contract: ${escapeHtml(a.contract)}</div>
+      </div>
+      <div><button class="btn ghost" onclick="openDetails('${escapeHtml(a.id)}')">View</button></div>
+    </div>`;
+    wrap.appendChild(div);
+  });
+}
+
+/* -----------------------------
+   Action Buttons & Workflow
+   ----------------------------- */
+function renderActionButtons(app){
+  const tok = getToken();
+  const role = tok ? tok.role : 'Guest';
+  let html = `<button class="btn" onclick="openDetails('${escapeHtml(app.id)}')">Details</button>`;
+  // Owner (faculty) identification: we don't have login for faculty email; demo only checks username 'faculty'
+  if(role==='Faculty'){
+    html += ` <button class="btn ghost" onclick="withdrawApp('${escapeHtml(app.id)}')">Withdraw</button>`;
+  }
+  if(role==='HOD' && app.round===0 && app.status!=='Rejected' && !app.status.includes('Approved ✅')){
+    html += ` <button class="btn" onclick="openQuestionModal('${escapeHtml(app.id)}','HOD')">HOD Review</button>`;
+    html += ` <button class="btn ghost" style="background:#fff1f2;color:#c00" onclick="rejectApp('${escapeHtml(app.id)}')">Reject</button>`;
+  }
+  if(role==='Principal' && app.round===1 && app.status==='Approved by HOD'){
+    html += ` <button class="btn" onclick="openQuestionModal('${escapeHtml(app.id)}','Principal')">Principal Review</button>`;
+    html += ` <button class="btn ghost" style="background:#fff1f2;color:#c00" onclick="rejectApp('${escapeHtml(app.id)}')">Reject</button>`;
+  }
+  if(role==='Management' && app.round===2 && app.status==='Approved by Principal'){
+    html += ` <button class="btn" onclick="openQuestionModal('${escapeHtml(app.id)}','Management')">Final Review</button>`;
+    html += ` <button class="btn ghost" style="background:#fff1f2;color:#c00" onclick="rejectApp('${escapeHtml(app.id)}')">Reject</button>`;
+  }
+  return html;
+}
+
+/* -----------------------------
+   Details modal (view + comment + ask question + feedback button)
+   ----------------------------- */
+function openDetails(id){
+  const app = state.applications.find(a=>a.id===id);
+  if(!app) return toast('Application not found');
+  const tok = getToken();
+  const role = tok ? tok.role : 'Guest';
+  // collect student feedbacks for this app
+  const studentFeedbacks = state.feedbackRecords.filter(f=>f.appId===app.id);
+
+  // Render student feedback list with masking for non-students
+  const viewerIsStudent = tok && tok.role === 'Student';
+  let feedbackHtml = '';
+  if(studentFeedbacks.length === 0){
+    feedbackHtml = '<div class="small muted">No student feedback yet</div>';
+  } else {
+    feedbackHtml = studentFeedbacks.map(f=>{
+      const idDisplay = (viewerIsStudent && (tok.username.toLowerCase() === (f.studentId||'').toLowerCase())) ? escapeHtml(f.studentId) : (viewerIsStudent ? escapeHtml(f.studentId) : escapeHtml(maskStudentId(f.studentId)));
+      return `<div class="feedback-item"><div class="small muted">By: ${idDisplay} • Month: ${escapeHtml(f.month)} • Rating: ${escapeHtml(f.rating)}</div><div style="margin-top:6px">${escapeHtml(f.comments)}</div></div>`;
+    }).join('');
+  }
+
+  let html = `<h3>Application Details</h3>
+    <div class="small muted">ID: ${escapeHtml(app.id)}</div>
+    <div style="display:flex;gap:12px;margin-top:12px">
+      <div style="flex:1">
+        <div style="font-weight:800">${escapeHtml(app.name)} <span class="small muted">(${escapeHtml(app.dept)})</span></div>
+        <div class="small muted">${escapeHtml(app.email)} • ${escapeHtml(app.phone)}</div>
+        <div style="margin-top:8px;"><b>Qualification:</b> ${escapeHtml(app.qualification)}</div>
+        <div><b>Experience:</b> ${escapeHtml(app.experience)} years</div>
+        <div><b>Aadhaar:</b> ${escapeHtml(app.aadhaar)} • <b>PAN:</b> ${escapeHtml(app.pan)}</div>
+        <div style="margin-top:8px;"><b>Resume:</b> ${escapeHtml(app.resume)}</div>
+        <div style="margin-top:8px;"><b>Contract:</b> ${escapeHtml(app.contract)}</div>
+        <div style="margin-top:8px;"><b>Status:</b> ${escapeHtml(app.status)}</div>
+      </div>
+      <div style="min-width:220px;text-align:right">
+        <div class="small muted">Progress</div>
+        ${renderProgress(app)}
+        <div style="margin-top:12px">
+          ${role!=='Guest' ? `<button class="btn" onclick="askQuestion('${escapeHtml(app.id)}')">Ask Faculty</button>` : ''}
+        </div>
+      </div>
+    </div>
+    <hr style="margin:12px 0">
+    <h4>Review History</h4>
+    ${app.feedback.length===0 ? '<div class="small muted">No reviews yet</div>' : app.feedback.map(f=>`<div class="comment-section"><b>${escapeHtml(f.by)}</b><div style="margin-top:6px">${f.answers.map((a,i)=>`<div><b>Q${i+1}:</b> ${escapeHtml(a)}</div>`).join('')}</div></div>`).join('')}
+    <div class="feedback-list">
+      <div style="font-weight:700">Student Feedback</div>
+      ${feedbackHtml}
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+      <button class="btn" onclick="openFeedbackModal('${escapeHtml(app.id)}')">Give Feedback</button>
+      <button class="btn ghost" onclick="closeDetails()">Close</button>
+    </div>
+  `;
+  document.getElementById('detailsBox').innerHTML = html;
+  document.getElementById('detailsModal').style.display = 'flex';
+}
+function closeDetails(){ document.getElementById('detailsModal').style.display='none' }
+
+/* -----------------------------
+   Question Modal (approver asks mandatory dept-specific questions)
+   ----------------------------- */
+const deptQuestions = {
+  CSE: {
+    HOD: ['Does the candidate have programming skills (C/Python)?','Has candidate published CS research?'],
+    Principal: ['Meets academic standards?','Recommended for management?'],
+    Management: ['Final approval?','Salary suggestion (optional)']
+  },
+  ECE: {
+    HOD: ['Experience in embedded/IoT?','Has lab teaching experience?'],
+    Principal: ['Meets academic standards?','Recommended for management?'],
+    Management: ['Final approval?','Salary suggestion (optional)']
+  },
+  ME: {
+    HOD: ['Industrial experience present?','Familiar with CAD/CAM?'],
+    Principal: ['Meets academic standards?','Recommended for management?'],
+    Management: ['Final approval?','Salary suggestion (optional)']
+  },
+  Civil: {
+    HOD: ['Experience in structural/site work?','Familiar with surveying/AutoCAD?'],
+    Principal: ['Meets academic standards?','Recommended for management?'],
+    Management: ['Final approval?','Salary suggestion (optional)']
+  },
+  EE: {
+    HOD: ['Experience in power systems/circuits?','Handled lab sessions?'],
+    Principal: ['Meets academic standards?','Recommended for management?'],
+    Management: ['Final approval?','Salary suggestion (optional)']
+  }
+};
+
+function openQuestionModal(appId, role){
+  const app = state.applications.find(a=>a.id===appId);
+  if(!app) return toast('Application not found');
+  const dept = app.dept;
+  const qset = (deptQuestions[dept] && deptQuestions[dept][role]) ? deptQuestions[dept][role] : ['Approve?','Comments'];
+  let html = `<h3>${role} Questions — ${dept}</h3><div class="small muted">All fields mandatory</div><div style="margin-top:12px">`;
+  qset.forEach((q,i)=> html += `<label>${escapeHtml(q)}</label><input id="aq${i}" placeholder="${escapeHtml(q)}" />`);
+  html += `</div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+            <button class="btn" onclick="submitApproverAnswers('${escapeHtml(appId)}','${escapeHtml(role)}')">Submit</button>
+            <button class="btn ghost" onclick="closeQuestionModal()">Cancel</button>
+          </div>`;
+  document.getElementById('questionBox').innerHTML = html;
+  document.getElementById('questionModal').style.display = 'flex';
+  // focus first input
+  setTimeout(()=>{ const f = document.querySelector('#questionBox input'); if(f) f.focus(); }, 50);
+}
+
+function closeQuestionModal(){ document.getElementById('questionModal').style.display='none'; }
+
+function submitApproverAnswers(appId, role){
+  const inputs = Array.from(document.querySelectorAll('#questionBox input'));
+  if(inputs.some(i=>i.value.trim()==='')){ alert('Please answer all questions'); return; }
+  const answers = inputs.map(i=>i.value.trim());
+  const app = state.applications.find(a=>a.id===appId);
+  if(!app) return;
+
+  app.feedback.push({ by: role, answers, at: Date.now() });
+  // Advance workflow
+  if(role==='HOD'){ app.round = 1; app.status = 'Approved by HOD'; }
+  else if(role==='Principal'){ app.round = 2; app.status = 'Approved by Principal'; }
+  else if(role==='Management'){ app.round = 3; app.status = 'Approved ✅';
+    // management may include salary in answers last item — capture
+    const salary = answers.length ? answers[answers.length-1] : null;
+    if(salary && (salary.toLowerCase().includes('₹') || /^\d+/.test(salary))) app.salary = salary;
+  }
+
+  saveState(state); closeQuestionModal(); renderAll();
+  toast(`${role} review submitted — ${app.status}`);
+}
+
+/* -----------------------------
+   Ask question to faculty (approver -> faculty)
+   ----------------------------- */
+function askQuestion(appId){
+  const app = state.applications.find(a=>a.id===appId);
+  if(!app) return;
+  const by = getToken() ? getToken().role : 'Anon';
+  const q = prompt('Ask a question to the applicant (they will see it in feedback):');
+  if(!q) return toast('Cancelled');
+  app.feedback.push({ by: `Question from ${by}`, answers: [q], at: Date.now(), toApplicant: true });
+  saveState(state); toast('Question sent to applicant (saved in feedback).');
+}
+
+/* -----------------------------
+   Reject / Withdraw
+   ----------------------------- */
+function rejectApp(appId){
+  if(!confirm('Reject this application?')) return;
+  const app = state.applications.find(a=>a.id===appId);
+  if(!app) return;
+  app.status = 'Rejected'; saveState(state); renderAll(); toast('Application rejected');
+}
+function withdrawApp(appId){
+  if(!confirm('Withdraw application?')) return;
+  const idx = state.applications.findIndex(a=>a.id===appId);
+  if(idx===-1) return;
+  state.applications.splice(idx,1); saveState(state); renderAll(); toast('Application withdrawn');
+}
+
+/* -----------------------------
+   CSV export & reset
+   ----------------------------- */
+document.getElementById('exportCSV').addEventListener('click', ()=> {
+  const rows = [['Name','Email','Phone','Dept','Qualification','Experience','Salary','Status']];
+  state.applications.filter(a=>a.status.includes('Approved')).forEach(a=>{
+    rows.push([a.name,a.email,a.phone,a.dept,a.qualification,a.experience,a.salary||'',a.status]);
+  });
+  if(rows.length===1){ return toast('No approved faculty to export'); }
+  const csv = rows.map(r=>r.map(c=>`"${(c||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const link = document.createElement('a'); link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  link.download = 'approved_faculty.csv'; document.body.appendChild(link); link.click(); link.remove();
+});
+
+document.getElementById('resetData').addEventListener('click', ()=> {
+  if(!confirm('Reset demo data? This clears all saved applications.')) return;
+  state = {applications:[], feedbackRecords:[]}; saveState(state); renderAll(); toast('Demo data reset');
+});
+
+/* -----------------------------
+   Helpers & misc bindings
+   ----------------------------- */
+document.getElementById('applyFilters').addEventListener('click', ()=>{ renderApplications(); renderDashboardList(); });
+document.getElementById('clearFilters').addEventListener('click', ()=>{ document.getElementById('filterDept').value=''; document.getElementById('filterStatus').value=''; renderApplications(); renderDashboardList(); });
+document.getElementById('resetForm').addEventListener('click', ()=>{ if(confirm('Reset form?')) document.getElementById('appForm').reset(); });
+document.getElementById('quickSearch').addEventListener('input', renderDashboardList);
+document.getElementById('quickSort').addEventListener('change', renderDashboardList);
+document.getElementById('filterDept').addEventListener('change', ()=>{ renderApplications(); renderDashboardList(); });
+document.getElementById('filterStatus').addEventListener('change', ()=>{ renderApplications(); renderDashboardList(); });
+
+/* open details from action buttons */
+window.openDetails = openDetails;
+window.openQuestionModal = openQuestionModal;
+window.rejectApp = rejectApp;
+window.withdrawApp = withdrawApp;
+
+/* -----------------------------
+   Student Feedback modal + logic
+   ----------------------------- */
+
+function openFeedbackModal(appId){
+  const app = state.applications.find(a=>a.id===appId);
+  if(!app) return toast('Application not found');
+  const tok = getToken();
+  // studentId: if logged in and role 'Student' use username; otherwise ask for Student ID/email
+  let studentIdInput = '';
+  let studentHint = '';
+  if(tok && tok.role==='Student'){
+    studentIdInput = `<div class="small muted">Logged in as: ${escapeHtml(tok.username)}</div>`;
+  } else {
+    studentHint = 'Please provide a Student ID or Email (used to prevent duplicate monthly feedback).';
+    studentIdInput = `<label>Student ID / Email *</label><input id="fbStudentId" placeholder="e.g. s12345 or student@uni.edu" />`;
+  }
+
+  // month selector: show month name and year (current year)
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let monthOptions = '';
+  months.forEach((m,idx)=> {
+    const selected = (idx === now.getMonth()) ? 'selected' : '';
+    monthOptions += `<option value="${m} ${currentYear}" ${selected}>${m} ${currentYear}</option>`;
+  });
+
+  const html = `<h3>Leave Feedback for ${escapeHtml(app.name)}</h3>
+    <div class="small muted">${studentHint}</div>
+    <div style="margin-top:12px">
+      ${studentIdInput}
+      <label>Month *</label>
+      <select id="fbMonth">${monthOptions}</select>
+      <label>Rating (1-5) *</label>
+      <select id="fbRating"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+      <label>Your comments *</label>
+      <textarea id="fbText" placeholder="Enter your feedback here..."></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn" onclick="submitFeedback('${escapeHtml(appId)}')">Submit</button>
+        <button class="btn ghost" onclick="closeFeedbackModal()">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById('feedbackBox').innerHTML = html;
+  document.getElementById('feedbackModal').style.display='flex';
+  setTimeout(()=>{
+    const el = document.getElementById('fbText') || document.getElementById('fbStudentId');
+    if(el) el.focus();
+  },50);
+}
+
+function closeFeedbackModal(){ document.getElementById('feedbackModal').style.display='none'; }
+
+function submitFeedback(appId){
+  const textEl = document.getElementById('fbText');
+  const ratingEl = document.getElementById('fbRating');
+  const monthEl = document.getElementById('fbMonth');
+  if(!textEl || !ratingEl || !monthEl) return;
+  const comments = textEl.value.trim();
+  const rating = ratingEl.value;
+  const month = monthEl.value; // e.g. "November 2025"
+  let studentId = null;
+  const tok = getToken();
+  if(tok && tok.role==='Student'){
+    studentId = tok.username;
+  } else {
+    const sidEl = document.getElementById('fbStudentId');
+    if(!sidEl){ alert('Student ID required'); return; }
+    studentId = sidEl.value.trim();
+    if(!studentId){ alert('Enter Student ID or Email'); return; }
+  }
+  if(!comments){ alert('Enter feedback'); return; }
+
+  // check duplicate: same appId, same studentId (case-insensitive), same month
+  const exists = state.feedbackRecords.some(f=> f.appId===appId && f.studentId.toLowerCase()===studentId.toLowerCase() && f.month===month);
+  if(exists){
+    alert('You have already submitted feedback for this faculty for the selected month.');
+    return;
+  }
+
+  // record feedback
+  state.feedbackRecords.push({
+    id: 'FB-'+Math.random().toString(36).slice(2,9).toUpperCase(),
+    appId,
+    studentId,
+    month,
+    rating,
+    comments,
+    at: Date.now()
+  });
+  saveState(state);
+  closeFeedbackModal();
+  renderAll();
+  toast('Feedback submitted successfully');
+}
+
+/* -----------------------------
+   initial render
+   ----------------------------- */
+renderAll();
+</script>
+</body>
+</html>
